@@ -84,8 +84,18 @@ def search_frame(text_query):
     D,I = pq_frames.search(input,10000)
     return df_frames.iloc[I[0]].reset_index()
 
+with st.sidebar:
+    name = st.text_area("Query names",placeholder = "queries-p1-1")
+    first = st.text_area("Top 1",placeholder = "L02_V016,14200")
+option = st.selectbox(
+    'Choose indexer',
+    ('/mnt/d/AIgov/new/frames_L14_FLATindexer.index', '/mnt/d/AIgov/new/frames_L14_HNSWindexer.index'))
+
 model = load_model()
-pq_frames = load_indexer()
+pq_frames = load_indexer(option)
+if st.button("Reload indexer"):
+    del pq_frames
+    pq_frames = load_indexer(option)
 df_frames = load_data()
 txt = st.text_area(
     "Query: ",
@@ -95,11 +105,22 @@ st.write(txt)
 df_out = search_frame(txt)
 st.dataframe(df_out)
 
-HOME = "compressed" 
+HOME = "compressed_2" 
 
-list_img = [os.path.join(HOME,*df_out.iloc[pos][["Names",'frame name']].values.tolist()) for pos in range(0,100,1)]
+list_img = [os.path.join(HOME,*df_out.iloc[pos][["Names",'frame name']].values.tolist()) for pos in range(0,500,1)]
 
-image_iterator = paginator("result", list_img,items_per_page=50)
+image_iterator = paginator("result", list_img,items_per_page=100, on_sidebar=False)
 indices_on_page, images_on_page = map(list, zip(*image_iterator))
-st.image(images_on_page,width = 100, use_column_width="auto", caption=indices_on_page)
+st.image(images_on_page,width = 360, use_column_width="never", caption=indices_on_page)
 
+with st.sidebar:
+    if st.button("Confirm selection"):
+        first_row = pd.Series({"Names": first.split(",")[0],
+                            "frame idx": first.split(",")[-1]})
+        df_out = pd.concat([first_row.to_frame().T, df_out])
+        st.download_button(
+            label="Download queries result",
+            data=df_out.to_csv(),
+            file_name=name,
+            mime='text/csv',
+        )
